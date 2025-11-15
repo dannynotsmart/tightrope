@@ -165,9 +165,10 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {workspaces.map((workspace) => (
-              <div
+              <button
                 key={workspace.workspace_id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition duration-200 p-6"
+                onClick={() => router.push(`/workspaces/${workspace.workspace_id}`)}
+                className="text-left bg-white rounded-lg shadow hover:shadow-lg transition duration-200 p-6 hover:bg-gray-50 cursor-pointer"
               >
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {workspace.name}
@@ -175,7 +176,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm break-all">
                   {workspace.github_repository}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         )}

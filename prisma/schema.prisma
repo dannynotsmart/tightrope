@@ -24,9 +24,27 @@ model Workspace {
   name              String
   email             String
   user              User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  analysis          Analysis?
   github_repository String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@index([email])
+}
+
+model Analysis {
+  id                    String   @id @default(cuid())
+  workspace             Workspace @relation(fields: [workspaceId], references: [workspace_id], onDelete: Cascade)
+  workspaceId           String   @unique
+  external_workspace_id String?  // id returned by external analyzer service
+  status                String   @default("pending")
+  progress              Int?
+  message               String?
+  current_step          String?
+  status_url            String?
+  result_url            String?
+  result                Json?
+  startedAt             DateTime @default(now())
+  completedAt           DateTime?
+  updatedAt             DateTime @updatedAt
 }

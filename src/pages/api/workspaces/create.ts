@@ -36,10 +36,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     })
 
-    // convert dates to strings
-    const result = { ...workspace, createdAt: workspace.createdAt.toISOString(), updatedAt: workspace.updatedAt.toISOString() }
+    // start analysis with external API
+    try {
+      const analyzeResp = await fetch('http://0.0.0.0:8000/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ github_url: github_repository.trim(), workspace_id: workspace.workspace_id }),
+      })
 
-    return res.status(201).json({ success: true, workspace: result })
+      const analyzeData = await analyzeResp.json().catch(() => null)
+
+      // normalize status/result urls (some analyzers return relative paths)
+      const base = 'http://0.0.0.0:8000'
+      const status_url = analyzeData?.status_url
+        ? analyzeData.status_url.startsWith('http')
+          ? analyzeData.status_url
+          : `${base}${analyzeData.status_url}`
+        : null
+      const result_url = analyzeData?.result_url
+        ? analyzeData.result_url.startsWith('http')
+          ? analyzeData.result_url
+          : `${base}${analyzeData.result_url}`
+        : null
+
+      // store analysis record
+      const analysis = await prisma.analysis.create({
+        data: {
+          workspaceId: workspace.workspace_id,
+          external_workspace_id: analyzeData?.workspace_id ?? null,
+          status: analyzeData?.status ?? 'pending',
+          status_url: status_url,
+          result_url: result_url,
+        },
+      })
+
+      const result = {
+        ...workspace,
+        createdAt: workspace.createdAt.toISOString(),
+        updatedAt: workspace.updatedAt.toISOString(),
+        analysis: {
+          id: analysis.id,
+          status: analysis.status,
+          status_url: analysis.status_url,
+          result_url: analysis.result_url,
+          hasResult: !!analysis.result,
+        },
+      }
+
+      return res.status(201).json({ success: true, workspace: result })
+    } catch (err) {
+      console.error('analyze start error', err)
+      const result = { ...workspace, createdAt: workspace.createdAt.toISOString(), updatedAt: workspace.updatedAt.toISOString() }
+      return res.status(201).json({ success: true, workspace: result })
+    }
   } catch (err) {
     console.error('create workspace error', err)
     return res.status(500).json({ error: 'Internal server error' })
